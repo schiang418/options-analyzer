@@ -137,6 +137,28 @@ export default function StrategyAnalyzer() {
       setLongPremium(longPremiumData.midpoint.toFixed(2));
     }
   }, [longPremiumData]);
+
+  // Auto-calculate when all parameters are filled
+  useEffect(() => {
+    if (!stockData?.price) {
+      setShouldCalculate(false);
+      return;
+    }
+    
+    if (isSpread) {
+      if (shortStrike && shortPremium && longStrike && longPremium) {
+        setShouldCalculate(true);
+      } else {
+        setShouldCalculate(false);
+      }
+    } else {
+      if (strikePrice && premium) {
+        setShouldCalculate(true);
+      } else {
+        setShouldCalculate(false);
+      }
+    }
+  }, [stockData, isSpread, strikePrice, premium, shortStrike, shortPremium, longStrike, longPremium]);
   
   const calculateParams = useMemo(() => {
     if (!stockData?.price) return null;
@@ -223,8 +245,16 @@ export default function StrategyAnalyzer() {
 
   const handleTickerSelect = (symbol: string) => {
     setSelectedTicker(symbol);
-    setTicker(symbol);
+    setTicker(""); // Clear search input to hide results
     setShouldCalculate(false);
+    // Reset all parameters when changing ticker
+    setExpirationDate("");
+    setStrikePrice("");
+    setPremium("");
+    setShortStrike("");
+    setShortPremium("");
+    setLongStrike("");
+    setLongPremium("");
   };
 
   const handleCalculate = () => {
@@ -273,39 +303,25 @@ export default function StrategyAnalyzer() {
                 <CardDescription>Search and select underlying stock</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="ticker">Stock Symbol</Label>
-                  <Input
-                    id="ticker"
-                    placeholder="Enter ticker (e.g., AAPL)"
-                    value={ticker}
-                    onChange={(e) => setTicker(e.target.value.toUpperCase())}
-                    className="uppercase"
-                  />
-                  {searchingTickers && (
-                    <div className="mt-2 flex items-center text-sm text-muted-foreground">
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Searching...
+                {selectedTicker ? (
+                  // Show selected ticker with option to change
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-3 bg-accent rounded-md">
+                      <div>
+                        <div className="text-sm text-muted-foreground">Selected Stock</div>
+                        <div className="text-xl font-bold">{selectedTicker}</div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedTicker("");
+                          setTicker("");
+                        }}
+                      >
+                        Change
+                      </Button>
                     </div>
-                  )}
-                  {tickerResults && tickerResults.tickers.length > 0 && (
-                    <div className="mt-2 border rounded-md divide-y">
-                      {tickerResults.tickers.map((t) => (
-                        <button
-                          key={t.symbol}
-                          onClick={() => handleTickerSelect(t.symbol)}
-                          className="w-full px-3 py-2 text-left hover:bg-accent transition-colors"
-                        >
-                          <div className="font-medium">{t.symbol}</div>
-                          <div className="text-sm text-muted-foreground truncate">{t.name}</div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {selectedTicker && (
-                  <div className="pt-4 border-t">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">Current Price:</span>
                       {loadingPrice ? (
@@ -316,6 +332,38 @@ export default function StrategyAnalyzer() {
                         </span>
                       )}
                     </div>
+                  </div>
+                ) : (
+                  // Show search input
+                  <div>
+                    <Label htmlFor="ticker">Stock Symbol</Label>
+                    <Input
+                      id="ticker"
+                      placeholder="Enter ticker (e.g., AAPL)"
+                      value={ticker}
+                      onChange={(e) => setTicker(e.target.value.toUpperCase())}
+                      className="uppercase"
+                    />
+                    {searchingTickers && (
+                      <div className="mt-2 flex items-center text-sm text-muted-foreground">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Searching...
+                      </div>
+                    )}
+                    {tickerResults && tickerResults.tickers.length > 0 && (
+                      <div className="mt-2 border rounded-md divide-y max-h-64 overflow-y-auto">
+                        {tickerResults.tickers.map((t) => (
+                          <button
+                            key={t.symbol}
+                            onClick={() => handleTickerSelect(t.symbol)}
+                            className="w-full px-3 py-2 text-left hover:bg-accent transition-colors"
+                          >
+                            <div className="font-medium">{t.symbol}</div>
+                            <div className="text-sm text-muted-foreground truncate">{t.name}</div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -498,22 +546,6 @@ export default function StrategyAnalyzer() {
                     onChange={(e) => setQuantity(e.target.value)}
                   />
                 </div>
-
-                <Button 
-                  onClick={handleCalculate}
-                  disabled={!canCalculate() || calculatingMetrics}
-                  className="w-full"
-                  size="lg"
-                >
-                  {calculatingMetrics ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Calculating...
-                    </>
-                  ) : (
-                    "Calculate Strategy"
-                  )}
-                </Button>
               </CardContent>
             </Card>
           </div>
