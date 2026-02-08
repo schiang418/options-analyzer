@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,9 @@ export default function StrategyAnalyzer() {
   const [selectedTicker, setSelectedTicker] = useState("");
   const [strategyType, setStrategyType] = useState<StrategyType>("long_call");
   
+  // Expiration date
+  const [expirationDate, setExpirationDate] = useState("");
+  
   // Single leg parameters
   const [strikePrice, setStrikePrice] = useState("");
   const [premium, setPremium] = useState("");
@@ -38,6 +41,9 @@ export default function StrategyAnalyzer() {
   const [quantity, setQuantity] = useState("1");
   const [shouldCalculate, setShouldCalculate] = useState(false);
 
+  // Calculate strategy type
+  const isSpread = strategyType === "bull_put_spread" || strategyType === "bear_call_spread";
+
   // Search tickers
   const { data: tickerResults, isLoading: searchingTickers } = trpc.options.searchTickers.useQuery(
     { query: ticker, limit: 10 },
@@ -50,8 +56,87 @@ export default function StrategyAnalyzer() {
     { enabled: !!selectedTicker }
   );
 
-  // Calculate strategy
-  const isSpread = strategyType === "bull_put_spread" || strategyType === "bear_call_spread";
+  // Get expiration dates
+  const contractType = strategyType.includes("call") ? "call" as const : "put" as const;
+  const { data: expirationData, isLoading: loadingExpirations } = trpc.options.getExpirationDates.useQuery(
+    { underlyingTicker: selectedTicker, contractType },
+    { enabled: !!selectedTicker }
+  );
+
+  // Get strike prices for single leg
+  const { data: strikePricesData, isLoading: loadingStrikes } = trpc.options.getStrikePrices.useQuery(
+    { 
+      underlyingTicker: selectedTicker, 
+      expirationDate, 
+      contractType 
+    },
+    { enabled: !!selectedTicker && !!expirationDate && !isSpread }
+  );
+
+  // Get strike prices for spread short leg
+  const { data: shortStrikePricesData, isLoading: loadingShortStrikes } = trpc.options.getStrikePrices.useQuery(
+    { 
+      underlyingTicker: selectedTicker, 
+      expirationDate, 
+      contractType 
+    },
+    { enabled: !!selectedTicker && !!expirationDate && isSpread }
+  );
+
+  // Get strike prices for spread long leg (same as short leg data)
+  const longStrikePricesData = shortStrikePricesData;
+
+  // Auto-fetch premium for single leg
+  const { data: premiumData, isLoading: loadingPremium } = trpc.options.getOptionQuote.useQuery(
+    {
+      underlyingTicker: selectedTicker,
+      expirationDate,
+      contractType,
+      strikePrice: parseFloat(strikePrice),
+    },
+    { enabled: !!selectedTicker && !!expirationDate && !!strikePrice && !isSpread }
+  );
+
+  // Auto-fetch premium for spread short leg
+  const { data: shortPremiumData, isLoading: loadingShortPremium } = trpc.options.getOptionQuote.useQuery(
+    {
+      underlyingTicker: selectedTicker,
+      expirationDate,
+      contractType,
+      strikePrice: parseFloat(shortStrike),
+    },
+    { enabled: !!selectedTicker && !!expirationDate && !!shortStrike && isSpread }
+  );
+
+  // Auto-fetch premium for spread long leg
+  const { data: longPremiumData, isLoading: loadingLongPremium } = trpc.options.getOptionQuote.useQuery(
+    {
+      underlyingTicker: selectedTicker,
+      expirationDate,
+      contractType,
+      strikePrice: parseFloat(longStrike),
+    },
+    { enabled: !!selectedTicker && !!expirationDate && !!longStrike && isSpread }
+  );
+
+  // Auto-fill premium when data is fetched
+  useEffect(() => {
+    if (premiumData?.found && premiumData.midpoint) {
+      setPremium(premiumData.midpoint.toFixed(2));
+    }
+  }, [premiumData]);
+
+  useEffect(() => {
+    if (shortPremiumData?.found && shortPremiumData.midpoint) {
+      setShortPremium(shortPremiumData.midpoint.toFixed(2));
+    }
+  }, [shortPremiumData]);
+
+  useEffect(() => {
+    if (longPremiumData?.found && longPremiumData.midpoint) {
+      setLongPremium(longPremiumData.midpoint.toFixed(2));
+    }
+  }, [longPremiumData]);
   
   const calculateParams = useMemo(() => {
     if (!stockData?.price) return null;
@@ -270,6 +355,23 @@ export default function StrategyAnalyzer() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Expiration Date Selector */}
+                <div>
+                  <Label htmlFor="expirationDate">Expiration Date</Label>
+                  <Select value={expirationDate} onValueChange={setExpirationDate}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={loadingExpirations ? "Loading..." : "Select expiration date"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {expirationData?.expirationDates.map((date) => (
+                        <SelectItem key={date} value={date}>
+                          {new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {isSpread ? (
                   <>
                     <div className="space-y-2">
@@ -277,25 +379,35 @@ export default function StrategyAnalyzer() {
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <Label htmlFor="shortStrike" className="text-xs">Strike Price</Label>
-                          <Input
-                            id="shortStrike"
-                            type="number"
-                            step="0.01"
-                            placeholder="0.00"
-                            value={shortStrike}
-                            onChange={(e) => setShortStrike(e.target.value)}
-                          />
+                          <Select value={shortStrike} onValueChange={setShortStrike} disabled={!expirationDate}>
+                            <SelectTrigger>
+                              <SelectValue placeholder={loadingShortStrikes ? "Loading..." : "Select strike"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {shortStrikePricesData?.strikePrices.map((item) => (
+                                <SelectItem key={item.ticker} value={item.strikePrice.toString()}>
+                                  ${item.strikePrice.toFixed(2)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div>
                           <Label htmlFor="shortPremium" className="text-xs">Premium</Label>
-                          <Input
-                            id="shortPremium"
-                            type="number"
-                            step="0.01"
-                            placeholder="0.00"
-                            value={shortPremium}
-                            onChange={(e) => setShortPremium(e.target.value)}
-                          />
+                          <div className="relative">
+                            <Input
+                              id="shortPremium"
+                              type="number"
+                              step="0.01"
+                              placeholder="Auto-filled"
+                              value={shortPremium}
+                              onChange={(e) => setShortPremium(e.target.value)}
+                              className="pr-8"
+                            />
+                            {loadingShortPremium && (
+                              <Loader2 className="absolute right-2 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -305,25 +417,35 @@ export default function StrategyAnalyzer() {
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <Label htmlFor="longStrike" className="text-xs">Strike Price</Label>
-                          <Input
-                            id="longStrike"
-                            type="number"
-                            step="0.01"
-                            placeholder="0.00"
-                            value={longStrike}
-                            onChange={(e) => setLongStrike(e.target.value)}
-                          />
+                          <Select value={longStrike} onValueChange={setLongStrike} disabled={!expirationDate}>
+                            <SelectTrigger>
+                              <SelectValue placeholder={loadingShortStrikes ? "Loading..." : "Select strike"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {longStrikePricesData?.strikePrices.map((item) => (
+                                <SelectItem key={item.ticker} value={item.strikePrice.toString()}>
+                                  ${item.strikePrice.toFixed(2)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div>
                           <Label htmlFor="longPremium" className="text-xs">Premium</Label>
-                          <Input
-                            id="longPremium"
-                            type="number"
-                            step="0.01"
-                            placeholder="0.00"
-                            value={longPremium}
-                            onChange={(e) => setLongPremium(e.target.value)}
-                          />
+                          <div className="relative">
+                            <Input
+                              id="longPremium"
+                              type="number"
+                              step="0.01"
+                              placeholder="Auto-filled"
+                              value={longPremium}
+                              onChange={(e) => setLongPremium(e.target.value)}
+                              className="pr-8"
+                            />
+                            {loadingLongPremium && (
+                              <Loader2 className="absolute right-2 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -332,25 +454,35 @@ export default function StrategyAnalyzer() {
                   <>
                     <div>
                       <Label htmlFor="strikePrice">Strike Price</Label>
-                      <Input
-                        id="strikePrice"
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={strikePrice}
-                        onChange={(e) => setStrikePrice(e.target.value)}
-                      />
+                      <Select value={strikePrice} onValueChange={setStrikePrice} disabled={!expirationDate}>
+                        <SelectTrigger>
+                          <SelectValue placeholder={loadingStrikes ? "Loading..." : "Select strike price"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {strikePricesData?.strikePrices.map((item) => (
+                            <SelectItem key={item.ticker} value={item.strikePrice.toString()}>
+                              ${item.strikePrice.toFixed(2)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div>
                       <Label htmlFor="premium">Premium (per share)</Label>
-                      <Input
-                        id="premium"
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={premium}
-                        onChange={(e) => setPremium(e.target.value)}
-                      />
+                      <div className="relative">
+                        <Input
+                          id="premium"
+                          type="number"
+                          step="0.01"
+                          placeholder="Auto-filled"
+                          value={premium}
+                          onChange={(e) => setPremium(e.target.value)}
+                          className="pr-8"
+                        />
+                        {loadingPremium && (
+                          <Loader2 className="absolute right-2 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+                        )}
+                      </div>
                     </div>
                   </>
                 )}

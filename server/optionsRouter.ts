@@ -60,6 +60,106 @@ export const optionsRouter = router({
       return { ticker: input.ticker, price };
     }),
 
+  // Get available expiration dates for a ticker
+  getExpirationDates: publicProcedure
+    .input(
+      z.object({
+        underlyingTicker: z.string(),
+        contractType: z.enum(["call", "put"]).optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const client = getPolygonClient();
+      const response = await client.getOptionContracts({
+        underlying_ticker: input.underlyingTicker,
+        contract_type: input.contractType,
+        expired: false,
+        limit: 1000,
+      });
+      
+      // Extract unique expiration dates and sort them
+      const expirationDates = Array.from(
+        new Set(response.results?.map((contract) => contract.expiration_date) || [])
+      ).sort();
+      
+      return { expirationDates };
+    }),
+
+  // Get available strike prices for a specific expiration date
+  getStrikePrices: publicProcedure
+    .input(
+      z.object({
+        underlyingTicker: z.string(),
+        expirationDate: z.string(),
+        contractType: z.enum(["call", "put"]),
+      })
+    )
+    .query(async ({ input }) => {
+      const client = getPolygonClient();
+      const response = await client.getOptionContracts({
+        underlying_ticker: input.underlyingTicker,
+        expiration_date: input.expirationDate,
+        contract_type: input.contractType,
+        expired: false,
+        limit: 1000,
+      });
+      
+      // Extract strike prices and sort them
+      const strikePrices = (response.results || [])
+        .map((contract) => ({
+          strikePrice: contract.strike_price,
+          ticker: contract.ticker,
+        }))
+        .sort((a, b) => a.strikePrice - b.strikePrice);
+      
+      return { strikePrices };
+    }),
+
+  // Get option quote (premium) for a specific contract
+  getOptionQuote: publicProcedure
+    .input(
+      z.object({
+        underlyingTicker: z.string(),
+        expirationDate: z.string(),
+        contractType: z.enum(["call", "put"]),
+        strikePrice: z.number(),
+      })
+    )
+    .query(async ({ input }) => {
+      const client = getPolygonClient();
+      
+      // Get option chain snapshot to find the specific contract
+      const response = await client.getOptionChainSnapshot({
+        underlying_ticker: input.underlyingTicker,
+        contract_type: input.contractType,
+        expiration_date: input.expirationDate,
+        strike_price: input.strikePrice,
+        limit: 1,
+      });
+      
+      const snapshot = response.results?.[0];
+      if (!snapshot) {
+        return { 
+          found: false,
+          bid: null,
+          ask: null,
+          last: null,
+          midpoint: null,
+        };
+      }
+      
+      return {
+        found: true,
+        bid: snapshot.last_quote?.bid || null,
+        ask: snapshot.last_quote?.ask || null,
+        last: snapshot.last_trade?.price || null,
+        midpoint: snapshot.last_quote?.midpoint || null,
+        impliedVolatility: snapshot.implied_volatility || null,
+        openInterest: snapshot.open_interest || null,
+        greeks: snapshot.greeks || null,
+      };
+    }),
+
   // Get option contracts for a ticker
   getOptionContracts: publicProcedure
     .input(
