@@ -36,6 +36,7 @@ export default function StrategyAnalyzer() {
   const [longPremium, setLongPremium] = useState("");
   
   const [quantity, setQuantity] = useState("1");
+  const [shouldCalculate, setShouldCalculate] = useState(false);
 
   // Search tickers
   const { data: tickerResults, isLoading: searchingTickers } = trpc.options.searchTickers.useQuery(
@@ -80,7 +81,7 @@ export default function StrategyAnalyzer() {
 
   const { data: metricsData, isLoading: calculatingMetrics } = trpc.options.calculateStrategy.useQuery(
     calculateParams!,
-    { enabled: !!calculateParams }
+    { enabled: !!calculateParams && shouldCalculate }
   );
 
   // Generate P&L curve
@@ -132,12 +133,26 @@ export default function StrategyAnalyzer() {
 
   const { data: plCurveData } = trpc.options.generatePLCurve.useQuery(
     plCurveParams!,
-    { enabled: !!plCurveParams }
+    { enabled: !!plCurveParams && shouldCalculate }
   );
 
   const handleTickerSelect = (symbol: string) => {
     setSelectedTicker(symbol);
     setTicker(symbol);
+    setShouldCalculate(false);
+  };
+
+  const handleCalculate = () => {
+    setShouldCalculate(true);
+  };
+
+  const canCalculate = () => {
+    if (!stockData?.price) return false;
+    if (isSpread) {
+      return !!shortStrike && !!shortPremium && !!longStrike && !!longPremium;
+    } else {
+      return !!strikePrice && !!premium;
+    }
   };
 
   const formatCurrency = (value: number) => {
@@ -351,6 +366,22 @@ export default function StrategyAnalyzer() {
                     onChange={(e) => setQuantity(e.target.value)}
                   />
                 </div>
+
+                <Button 
+                  onClick={handleCalculate}
+                  disabled={!canCalculate() || calculatingMetrics}
+                  className="w-full"
+                  size="lg"
+                >
+                  {calculatingMetrics ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Calculating...
+                    </>
+                  ) : (
+                    "Calculate Strategy"
+                  )}
+                </Button>
               </CardContent>
             </Card>
           </div>
