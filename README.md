@@ -58,7 +58,7 @@ A sophisticated options strategy analysis tool that helps traders evaluate risk 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/options-analyzer.git
+git clone https://github.com/schiang418/options-analyzer.git
 cd options-analyzer
 ```
 
