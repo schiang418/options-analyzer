@@ -31,12 +31,15 @@ export default function StrategyAnalyzer() {
   // Single leg parameters
   const [strikePrice, setStrikePrice] = useState("");
   const [premium, setPremium] = useState("");
+  const [impliedVolatility, setImpliedVolatility] = useState<number | null>(null);
   
   // Spread parameters
   const [shortStrike, setShortStrike] = useState("");
   const [shortPremium, setShortPremium] = useState("");
+  const [shortIV, setShortIV] = useState<number | null>(null);
   const [longStrike, setLongStrike] = useState("");
   const [longPremium, setLongPremium] = useState("");
+  const [longIV, setLongIV] = useState<number | null>(null);
   
   const [quantity, setQuantity] = useState("1");
   const [shouldCalculate, setShouldCalculate] = useState(false);
@@ -119,10 +122,13 @@ export default function StrategyAnalyzer() {
     { enabled: !!selectedTicker && !!expirationDate && !!longStrike && isSpread }
   );
 
-  // Auto-fill premium when data is fetched
+  // Auto-fill premium and IV when data is fetched
   useEffect(() => {
     if (premiumData?.found && premiumData.midpoint) {
       setPremium(premiumData.midpoint.toFixed(2));
+    }
+    if (premiumData?.impliedVolatility) {
+      setImpliedVolatility(premiumData.impliedVolatility);
     }
   }, [premiumData]);
 
@@ -130,11 +136,17 @@ export default function StrategyAnalyzer() {
     if (shortPremiumData?.found && shortPremiumData.midpoint) {
       setShortPremium(shortPremiumData.midpoint.toFixed(2));
     }
+    if (shortPremiumData?.impliedVolatility) {
+      setShortIV(shortPremiumData.impliedVolatility);
+    }
   }, [shortPremiumData]);
 
   useEffect(() => {
     if (longPremiumData?.found && longPremiumData.midpoint) {
       setLongPremium(longPremiumData.midpoint.toFixed(2));
+    }
+    if (longPremiumData?.impliedVolatility) {
+      setLongIV(longPremiumData.impliedVolatility);
     }
   }, [longPremiumData]);
 
@@ -477,6 +489,11 @@ export default function StrategyAnalyzer() {
                               <Loader2 className="absolute right-2 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
                             )}
                           </div>
+                          {shortIV !== null && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              IV: {(shortIV * 100).toFixed(1)}%
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -520,6 +537,11 @@ export default function StrategyAnalyzer() {
                               <Loader2 className="absolute right-2 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
                             )}
                           </div>
+                          {longIV !== null && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              IV: {(longIV * 100).toFixed(1)}%
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -562,6 +584,11 @@ export default function StrategyAnalyzer() {
                           <Loader2 className="absolute right-2 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
                         )}
                       </div>
+                      {impliedVolatility !== null && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          IV: {(impliedVolatility * 100).toFixed(1)}%
+                        </p>
+                      )}
                     </div>
                   </>
                 )}
