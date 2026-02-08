@@ -52,6 +52,10 @@
   --chart-3: var(--color-blue-600);
   --chart-4: var(--color-blue-700);
   --chart-5: var(--color-blue-800);
+  --profit: var(--color-green-600);
+  --profit-foreground: var(--color-green-50);
+  --loss: var(--color-red-600);
+  --loss-foreground: var(--color-red-50);
   --radius: 0.65rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.235 0.015 65);
@@ -105,6 +109,10 @@
   --chart-3: var(--color-blue-600);
   --chart-4: var(--color-blue-700);
   --chart-5: var(--color-blue-800);
+  --profit: var(--color-green-500);
+  --profit-foreground: var(--color-green-50);
+  --loss: var(--color-red-500);
+  --loss-foreground: var(--color-red-50);
   --sidebar: oklch(0.21 0.006 285.885);
   --sidebar-foreground: oklch(0.85 0.005 65);
   --sidebar-accent: oklch(0.274 0.006 286.033);
@@ -171,7 +179,46 @@
     .container {
       padding-left: 2rem; /* 32px - desktop padding */
       padding-right: 2rem;
-      max-width: 1280px; /* Standard content width */
+      max-width: 1400px; /* Wider for options data tables */
     }
+  }
+  
+  /* Profit/Loss utilities */
+  .text-profit {
+    color: var(--profit);
+  }
+  
+  .text-loss {
+    color: var(--loss);
+  }
+  
+  .bg-profit {
+    background-color: var(--profit);
+  }
+  
+  .bg-loss {
+    background-color: var(--loss);
+  }
+  
+  .border-profit {
+    border-color: var(--profit);
+  }
+  
+  .border-loss {
+    border-color: var(--loss);
+  }
+  
+  /* Card enhancements */
+  .card-elevated {
+    @apply shadow-lg hover:shadow-xl transition-shadow duration-200;
+  }
+  
+  .card-interactive {
+    @apply cursor-pointer hover:scale-[1.01] transition-transform duration-200;
+  }
+  
+  /* Number formatting */
+  .number-display {
+    @apply font-mono tabular-nums;
   }
 }
