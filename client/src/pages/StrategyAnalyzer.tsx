@@ -450,7 +450,12 @@ export default function StrategyAnalyzer() {
                             <SelectContent>
                               {shortStrikePricesData?.strikePrices.map((item) => (
                                 <SelectItem key={item.ticker} value={item.strikePrice.toString()}>
-                                  ${item.strikePrice.toFixed(2)}
+                                  <div className="flex justify-between items-center gap-4">
+                                    <span>${item.strikePrice.toFixed(2)}</span>
+                                    {item.delta !== null && (
+                                      <span className="text-xs text-muted-foreground">Δ {item.delta.toFixed(3)}</span>
+                                    )}
+                                  </div>
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -488,7 +493,12 @@ export default function StrategyAnalyzer() {
                             <SelectContent>
                               {longStrikePricesData?.strikePrices.map((item) => (
                                 <SelectItem key={item.ticker} value={item.strikePrice.toString()}>
-                                  ${item.strikePrice.toFixed(2)}
+                                  <div className="flex justify-between items-center gap-4">
+                                    <span>${item.strikePrice.toFixed(2)}</span>
+                                    {item.delta !== null && (
+                                      <span className="text-xs text-muted-foreground">Δ {item.delta.toFixed(3)}</span>
+                                    )}
+                                  </div>
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -525,7 +535,12 @@ export default function StrategyAnalyzer() {
                         <SelectContent>
                           {strikePricesData?.strikePrices.map((item) => (
                             <SelectItem key={item.ticker} value={item.strikePrice.toString()}>
-                              ${item.strikePrice.toFixed(2)}
+                              <div className="flex justify-between items-center gap-4">
+                                <span>${item.strikePrice.toFixed(2)}</span>
+                                {item.delta !== null && (
+                                  <span className="text-xs text-muted-foreground">Δ {item.delta.toFixed(3)}</span>
+                                )}
+                              </div>
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -686,9 +701,10 @@ export default function StrategyAnalyzer() {
                       <Line
                         type="monotone"
                         dataKey="profitLoss"
-                        stroke="hsl(var(--primary))"
+                        stroke="#10b981"
                         strokeWidth={3}
                         dot={false}
+                        isAnimationActive={false}
                       />
                     </LineChart>
                   </ResponsiveContainer>

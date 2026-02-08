@@ -101,20 +101,23 @@ export const optionsRouter = router({
     )
     .query(async ({ input }) => {
       const client = getPolygonClient();
-      const response = await client.getOptionContracts({
+      
+      // Get option chain snapshot to get Greeks data including Delta
+      const snapshotResponse = await client.getOptionChainSnapshot({
         underlying_ticker: input.underlyingTicker,
-        expiration_date: input.expirationDate,
         contract_type: input.contractType,
-        expired: false,
-        limit: 1000,
+        expiration_date: input.expirationDate,
+        limit: 250,
       });
       
-      // Extract strike prices and sort them
-      const strikePrices = (response.results || [])
-        .map((contract) => ({
-          strikePrice: contract.strike_price,
-          ticker: contract.ticker,
+      // Extract strike prices with Delta values and sort them
+      const strikePrices = (snapshotResponse.results || [])
+        .map((snapshot: any) => ({
+          strikePrice: snapshot.details?.strike_price || 0,
+          ticker: snapshot.details?.ticker || '',
+          delta: snapshot.greeks?.delta || null,
         }))
+        .filter((item) => item.strikePrice > 0)
         .sort((a, b) => a.strikePrice - b.strikePrice);
       
       return { strikePrices };
