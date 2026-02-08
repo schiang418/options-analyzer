@@ -14,6 +14,11 @@ import {
   type OptionLeg,
 } from "./strategyCalculator";
 import {
+  calculateProbability,
+  calculateProbabilityFromDelta,
+  type ProbabilityParams,
+} from "./probabilityCalculator";
+import {
   createSavedStrategy,
   getUserSavedStrategies,
   deleteSavedStrategy,
@@ -451,4 +456,22 @@ export const optionsRouter = router({
       
       return { success: true, preferences };
     }),
+
+  // Calculate probability of option expiring ITM using Black-Scholes
+  calculateProbability: publicProcedure
+    .input(
+      z.object({
+        stockPrice: z.number(),
+        strikePrice: z.number(),
+        daysToExpiration: z.number(),
+        impliedVolatility: z.number(),
+        optionType: z.enum(["call", "put"]),
+        riskFreeRate: z.number().optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const result = calculateProbability(input as ProbabilityParams);
+      return result;
+    }),
 });
+

@@ -337,13 +337,29 @@ export default function StrategyAnalyzer() {
                   // Show search input
                   <div>
                     <Label htmlFor="ticker">Stock Symbol</Label>
-                    <Input
-                      id="ticker"
-                      placeholder="Enter ticker (e.g., AAPL)"
-                      value={ticker}
-                      onChange={(e) => setTicker(e.target.value.toUpperCase())}
-                      className="uppercase"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="ticker"
+                        placeholder="Enter ticker (e.g., AAPL)"
+                        value={ticker}
+                        onChange={(e) => setTicker(e.target.value.toUpperCase())}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && ticker.trim()) {
+                            handleTickerSelect(ticker.trim());
+                          }
+                        }}
+                        className="uppercase"
+                      />
+                      {ticker.trim() && !searchingTickers && (
+                        <Button
+                          size="sm"
+                          className="absolute right-1 top-1 h-7"
+                          onClick={() => handleTickerSelect(ticker.trim())}
+                        >
+                          Use {ticker}
+                        </Button>
+                      )}
+                    </div>
                     {searchingTickers && (
                       <div className="mt-2 flex items-center text-sm text-muted-foreground">
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -149,14 +149,22 @@ class PolygonClient {
   }
 
   /**
-   * Get a single option contract snapshot
+   * Get a single option contract snapshot with Greeks data
+   * @param underlyingTicker - The underlying stock ticker (e.g., 'AAPL')
+   * @param optionTicker - The option contract ticker (e.g., 'O:AAPL230616C00150000')
    */
-  async getOptionContractSnapshot(optionTicker: string): Promise<PolygonResponse<OptionSnapshot>> {
-    const response = await this.client.get(`/v3/snapshot/options/${optionTicker}`, {
-      params: {
-        apiKey: this.apiKey,
-      },
-    });
+  async getOptionContractSnapshot(
+    underlyingTicker: string,
+    optionTicker: string
+  ): Promise<PolygonResponse<OptionSnapshot>> {
+    const response = await this.client.get(
+      `/v3/snapshot/options/${underlyingTicker}/${optionTicker}`,
+      {
+        params: {
+          apiKey: this.apiKey,
+        },
+      }
+    );
     return response.data;
   }
 
