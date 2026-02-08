@@ -75,14 +75,31 @@ export function generatePLCurve(
 ): ProfitLossPoint[] {
   const minPrice = currentPrice * (1 - range);
   const maxPrice = currentPrice * (1 + range);
-  const step = (maxPrice - minPrice) / 100; // 100 data points
+  
+  // Determine appropriate step size based on price range
+  const priceRange = maxPrice - minPrice;
+  let step: number;
+  
+  if (priceRange < 20) {
+    step = 1; // $1 intervals for small ranges
+  } else if (priceRange < 100) {
+    step = 5; // $5 intervals for medium ranges
+  } else if (priceRange < 500) {
+    step = 10; // $10 intervals for large ranges
+  } else {
+    step = 25; // $25 intervals for very large ranges
+  }
+  
+  // Round min and max to nearest step
+  const roundedMin = Math.floor(minPrice / step) * step;
+  const roundedMax = Math.ceil(maxPrice / step) * step;
   
   const points: ProfitLossPoint[] = [];
   
-  for (let price = minPrice; price <= maxPrice; price += step) {
+  for (let price = roundedMin; price <= roundedMax; price += step) {
     points.push({
-      stockPrice: Math.round(price * 100) / 100,
-      profitLoss: Math.round(calculateStrategyPL(legs, price) * 100) / 100,
+      stockPrice: parseFloat(price.toFixed(2)),
+      profitLoss: parseFloat(calculateStrategyPL(legs, price).toFixed(2)),
     });
   }
   
