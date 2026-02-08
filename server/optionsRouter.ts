@@ -153,12 +153,30 @@ export const optionsRouter = router({
         };
       }
       
+      // Calculate midpoint from available data
+      let midpoint = snapshot.last_quote?.midpoint || null;
+      
+      // If no midpoint, try to calculate from bid/ask
+      if (!midpoint && snapshot.last_quote?.bid && snapshot.last_quote?.ask) {
+        midpoint = (snapshot.last_quote.bid + snapshot.last_quote.ask) / 2;
+      }
+      
+      // If still no midpoint, use last trade price
+      if (!midpoint && snapshot.last_trade?.price) {
+        midpoint = snapshot.last_trade.price;
+      }
+      
+      // If still no midpoint, use day close price
+      if (!midpoint && snapshot.day?.close) {
+        midpoint = snapshot.day.close;
+      }
+      
       return {
         found: true,
         bid: snapshot.last_quote?.bid || null,
         ask: snapshot.last_quote?.ask || null,
-        last: snapshot.last_trade?.price || null,
-        midpoint: snapshot.last_quote?.midpoint || null,
+        last: snapshot.last_trade?.price || snapshot.day?.close || null,
+        midpoint,
         impliedVolatility: snapshot.implied_volatility || null,
         openInterest: snapshot.open_interest || null,
         greeks: snapshot.greeks || null,
